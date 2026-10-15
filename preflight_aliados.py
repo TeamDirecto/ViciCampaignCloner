@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Local read-only preflight for WD migration. No passwords are exported."""
 import json
-import subprocess
+import os
 import sys
 import pymysql
 
@@ -10,8 +10,12 @@ USERS = ["AGENTE-WD_%02d" % n for n in range(1, 16)] + ["Sup_WD_1"]
 def main():
     import getpass
     password = getpass.getpass("MariaDB cron password (local only): ")
+    sockets = ["/var/run/mysql/mysql.sock", "/run/mysql/mysql.sock", "/var/lib/mysql/mysql.sock", "/var/run/mysqld/mysqld.sock"]
+    socket = next((s for s in sockets if os.path.exists(s)), None)
+    if not socket:
+        raise RuntimeError("No MariaDB Unix socket found; inspect SHOW VARIABLES LIKE socket")
     conn = pymysql.connect(
-        unix_socket="/var/run/mysql/mysql.sock",
+        unix_socket=socket,
         user="cron", password=password,
         database="asterisk",
         cursorclass=pymysql.cursors.DictCursor)
